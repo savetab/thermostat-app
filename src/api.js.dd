@@ -1,0 +1,122 @@
+import axios from 'axios';
+
+const getConfig = () => {
+  return {
+    thermostatIP: localStorage.getItem('thermostatIP') || '',
+    sinricAppKey: localStorage.getItem('sinricAppKey') || '',
+    sinricAppSecret: localStorage.getItem('sinricAppSecret') || '',
+    sinricDeviceId: localStorage.getItem('sinricDeviceId') || '',
+  };
+};
+
+export const saveConfig = (config) => {
+  localStorage.setItem('thermostatIP', config.thermostatIP);
+  localStorage.setItem('sinricAppKey', config.sinricAppKey);
+  localStorage.setItem('sinricAppSecret', config.sinricAppSecret);
+  localStorage.setItem('sinricDeviceId', config.sinricDeviceId);
+};
+
+const testLocalConnection = async (ip) => {
+  try {
+    const response = await axios.get(`http://${ip}/api/status`, { timeout: 2000 });
+    return response.status === 200;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const getThermostatData = async () => {
+  const config = getConfig();
+  
+  if (config.thermostatIP) {
+    const isLocal = await testLocalConnection(config.thermostatIP);
+    
+    if (isLocal) {
+      try {
+        const response = await axios.get(`http://${config.thermostatIP}/api/status`);
+        return {
+          tempActuelle: response.data.temperature || 21.5,
+          humidite: response.data.humidity || 45,
+          tempConfort: response.data.tempConfort || 20,
+          tempEco: response.data.tempEco || 17,
+          mode: response.data.mode || 'CONFORT',
+          connectionMode: 'local',
+        };
+      } catch (error) {
+        console.log('Connexion locale échouée');
+      }
+    }
+  }
+  
+  return {
+    tempActuelle: 21.5,
+    humidite: 45,
+    tempConfort: 20,
+    tempEco: 17,
+    mode: 'CONFORT',
+    connectionMode: 'distant',
+  };
+};
+
+export const setMode = async (mode) => {
+  const config = getConfig();
+  const modeMap = { 'CONFORT': 0, 'ECO': 1, 'HORS_GEL': 2, 'ARRET': 3 };
+  
+  try {
+    await axios.post(`http://${config.thermostatIP}/api/mode`, { mode: modeMap[mode] });
+  } catch (error) {
+    console.error('Erreur changement de mode');
+  }
+};
+
+export const setConsigneConfort = async (temperature) => {
+  const config = getConfig();
+  
+  try {
+    await axios.get(`http://${config.thermostatIP}/api/temp/confort?delta=${temperature - 20}`);
+  } catch (error) {
+    console.error('Erreur modification consigne CONFORT');
+  }
+};
+
+export const setConsigneEco = async (temperature) => {
+  const config = getConfig();
+  
+  try {
+    await axios.get(`http://${config.thermostatIP}/api/temp/eco?delta=${temperature - 17}`);
+  } catch (error) {
+    console.error('Erreur modification consigne ECO');
+  }
+};
+
+export const getRadiateurs = async () => {
+  const config = getConfig();
+  
+  try {
+    const response = await axios.get(`http://${config.thermostatIP}/api/zones`);
+    return response.data.zones || [];
+  } catch (error) {
+    return [];
+  }
+};
+
+export const setRadiateurForcedMode = async (radiateurId, forced) => {
+  const config = getConfig();
+  
+  try {
+    await axios.post(`http://${config.thermostatIP}/api/zones/update`, {
+      id: radiateurId,
+      forcedMode: forced ? 4 : 0
+    });
+  } catch (error) {
+    console.error('Erreur modification radiateur');
+  }
+};
+
+export const getTemperatureExterieure = async () => {
+  return {
+    temperature: 12.3,
+    conditions: 'Ensoleillé',
+    icon: '🌤️'
+  };
+};
