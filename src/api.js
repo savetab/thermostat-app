@@ -1,5 +1,27 @@
 import axios from 'axios';
 
+// Charger config depuis URL si présente, sinon depuis localStorage
+const loadConfigFromURL = () => {
+  const params = new URLSearchParams(window.location.search);
+  const config = {};
+  
+  if (params.has('ip')) config.thermostatIP = params.get('ip');
+  if (params.has('key')) config.sinricAppKey = params.get('key');
+  if (params.has('device')) config.sinricDeviceId = params.get('device');
+  
+  // Sauvegarder en localStorage si config trouvée dans URL
+  if (Object.keys(config).length > 0) {
+    Object.entries(config).forEach(([key, value]) => {
+      localStorage.setItem(key, value);
+    });
+    // Nettoyer l'URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+};
+
+// Charger au démarrage
+loadConfigFromURL();
+
 const getConfig = () => ({
   thermostatIP: localStorage.getItem('thermostatIP') || '',
   sinricAppKey: localStorage.getItem('sinricAppKey') || '',
@@ -14,6 +36,21 @@ export const saveConfig = (config) => {
   localStorage.setItem('sinricDeviceId', config.sinricDeviceId);
 };
 
+// Générer URL de partage
+export const getShareURL = () => {
+  const config = getConfig();
+  if (!config.sinricAppKey || !config.sinricDeviceId) return null;
+  
+  const baseURL = window.location.origin;
+  const params = new URLSearchParams({
+    ip: config.thermostatIP,
+    key: config.sinricAppKey,
+    device: config.sinricDeviceId
+  });
+  
+  return `${baseURL}?${params.toString()}`;
+};
+
 let isLocalAvailable = false;
 let lastLocalCheck = 0;
 const LOCAL_CHECK_INTERVAL = 10000;
@@ -24,7 +61,6 @@ const testLocalConnection = async (ip) => {
   if (now - lastLocalCheck < LOCAL_CHECK_INTERVAL && lastLocalCheck > 0) return isLocalAvailable;
   
   try {
-    // Timeout TRÈS court pour détecter rapidement si on est à distance
     const response = await axios.get(`http://${ip}/api/status`, { timeout: 800 });
     isLocalAvailable = response.status === 200;
     lastLocalCheck = now;
@@ -125,7 +161,6 @@ const getSinricState = async () => {
 export const getThermostatData = async () => {
   const config = getConfig();
   
-  // PRIORITÉ 1 : Test connexion locale (timeout court)
   if (config.thermostatIP) {
     const isLocal = await testLocalConnection(config.thermostatIP);
     if (isLocal) {
@@ -149,14 +184,12 @@ export const getThermostatData = async () => {
     }
   }
   
-  // PRIORITÉ 2 : SinricPro distant
   const sinricData = await getSinricState();
   if (sinricData) {
     if (pendingState) return { ...sinricData, ...pendingState, connectionMode: 'distant' };
     return sinricData;
   }
   
-  // FALLBACK
   console.warn('⚠️ Aucune source de données disponible');
   const fallback = {
     tempActuelle: null,
@@ -196,7 +229,7 @@ export const setMode = async (mode) => {
     if (token) {
       await axios.post(
         `${PROXY}devices/${config.sinricDeviceId}/action`, 
-        { action: 'setThermostatMode', value: { thermostatMode: sinricModeMap[mode] } }, 
+        { action: 'setThermostatMode', value: JSON.stringify({ thermostatMode: sinricModeMap[mode] }) }, 
         { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15000 }
       );
       console.log('✅ Mode changé via SinricPro');
@@ -230,7 +263,7 @@ export const setConsigneConfort = async (temperature) => {
     if (token) {
       await axios.post(
         `${PROXY}devices/${config.sinricDeviceId}/action`, 
-        { action: 'setTargetTemperature', value: { temperature: parseFloat(temperature) } }, 
+        { action: 'setTargetTemperature', value: JSON.stringify({ temperature: parseFloat(temperature) }) }, 
         { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15000 }
       );
       console.log('✅ Consigne CONFORT changée via SinricPro');
