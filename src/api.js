@@ -63,11 +63,11 @@ const getWeatherFromIP = async () => {
   }
 
   try {
-    // Étape 1 : Géolocalisation par IP
-    const geoResponse = await axios.get('http://ip-api.com/json/', { timeout: 5000 });
-    if (geoResponse.data.status !== 'success') return null;
+    // Étape 1 : Géolocalisation par IP (HTTPS)
+    const geoResponse = await axios.get('https://ipapi.co/json/', { timeout: 5000 });
+    if (!geoResponse.data.latitude) return null;
 
-    const { lat, lon } = geoResponse.data;
+    const { latitude: lat, longitude: lon } = geoResponse.data;
 
     // Étape 2 : Récupérer la météo
     const weatherResponse = await axios.get(
