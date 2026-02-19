@@ -65,14 +65,16 @@ const HomePage = () => {
     setData(prev => ({ ...prev, tempConfort: newTemp }));
     try {
       await setConsigneConfort(newTemp);
+      console.log('✅ Consigne CONFORT envoyée:', newTemp);
     } catch (err) {
       setError('Erreur modification consigne CONFORT');
     } finally {
+      // Attendre 5 secondes pour laisser SinricPro propager le changement
       setTimeout(() => {
         isSendingRef.current = false;
         setIsSending(false);
         loadData();
-      }, 2000);
+      }, 5000);
     }
   };
 
@@ -84,14 +86,16 @@ const HomePage = () => {
     setData(prev => ({ ...prev, tempEco: validTemp }));
     try {
       await setConsigneEco(validTemp);
+      console.log('✅ Consigne ECO envoyée:', validTemp);
     } catch (err) {
       setError('Erreur modification consigne ECO');
     } finally {
+      // Attendre 3 secondes (ECO est local uniquement, plus rapide)
       setTimeout(() => {
         isSendingRef.current = false;
         setIsSending(false);
         loadData();
-      }, 2000);
+      }, 3000);
     }
   };
 
@@ -129,9 +133,9 @@ const HomePage = () => {
                 className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"
               />
             )}
-            <div className={`w-2 h-2 rounded-full ${connectionMode === 'local' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+            <div className={`w-2 h-2 rounded-full ${connectionMode === 'local' ? 'bg-green-500' : connectionMode === 'distant' ? 'bg-yellow-500' : 'bg-red-500'}`} />
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {connectionMode === 'local' ? '⚡ Local' : '🌐 Distant'}
+              {connectionMode === 'local' ? '⚡ Local' : connectionMode === 'distant' ? '🌐 Distant' : 'Hors-ligne'}
             </span>
           </div>
         </div>
@@ -170,13 +174,12 @@ const HomePage = () => {
           </motion.div>
         </div>
 
-        {/* Modes */}
+        {/* Modes - HORS-GEL RETIRÉ */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl mb-6">
           <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">MODE</h2>
           <div className="grid grid-cols-2 gap-3">
             <ModeButton mode="CONFORT" icon="🔥" isActive={data?.mode === 'CONFORT'} onClick={() => handleModeChange('CONFORT')} color="confort" />
             <ModeButton mode="ECO" icon="🌿" isActive={data?.mode === 'ECO'} onClick={() => handleModeChange('ECO')} color="eco" />
-            <ModeButton mode="HORS-GEL" icon="❄️" isActive={data?.mode === 'HORS_GEL'} onClick={() => handleModeChange('HORS_GEL')} color="horsgel" />
             <ModeButton mode="ARRÊT" icon="⭕" isActive={data?.mode === 'ARRET'} onClick={() => handleModeChange('ARRET')} color="arret" />
           </div>
         </div>
