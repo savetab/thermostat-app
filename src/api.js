@@ -117,7 +117,7 @@ let pendingTimeout = null;
 const setPendingState = (newState) => {
   pendingState = { ...pendingState, ...newState };
   if (pendingTimeout) clearTimeout(pendingTimeout);
-  pendingTimeout = setTimeout(() => { pendingState = null; }, 5000);
+  pendingTimeout = setTimeout(() => { pendingState = null; }, 30000); // 30 secondes
 };
 
 const PROXY = '/api/sinric?path=';
@@ -310,7 +310,7 @@ export const setConsigneConfort = async (temperature) => {
         `${PROXY}devices/${config.sinricDeviceId}/action`, 
         { 
           type: 'request',
-          action: 'setTargetTemperature', 
+          action: 'targetTemperature',
           value: JSON.stringify({ temperature: parseFloat(temperature) }) 
         }, 
         { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15000 }
