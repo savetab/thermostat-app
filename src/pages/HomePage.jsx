@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import ModeButton from '../components/ModeButton';
 import TemperatureControl from '../components/TemperatureControl';
-import { getThermostatData, setMode, setConsigneConfort, setConsigneEco } from '../api';
+import { getThermostatData, setMode, setConsigneConfort } from '../api';
 
 const getTempExtIcon = (temp) => {
   if (temp === null || temp === undefined) return '🌤️';
@@ -75,27 +75,6 @@ const HomePage = () => {
         setIsSending(false);
         loadData();
       }, 5000);
-    }
-  };
-
-  const handleConsigneEcoChange = async (newTemp) => {
-    const maxEco = (data?.tempConfort || 20) - 1;
-    const validTemp = Math.min(newTemp, maxEco);
-    isSendingRef.current = true;
-    setIsSending(true);
-    setData(prev => ({ ...prev, tempEco: validTemp }));
-    try {
-      await setConsigneEco(validTemp);
-      console.log('✅ Consigne ECO envoyée:', validTemp);
-    } catch (err) {
-      setError('Erreur modification consigne ECO');
-    } finally {
-      // Attendre 3 secondes (ECO est local uniquement, plus rapide)
-      setTimeout(() => {
-        isSendingRef.current = false;
-        setIsSending(false);
-        loadData();
-      }, 3000);
     }
   };
 
