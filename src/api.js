@@ -51,6 +51,44 @@ export const getShareURL = () => {
   return `${baseURL}?${params.toString()}`;
 };
 
+// ========== MÉTÉO VIA GÉOLOCALISATION IP ==========
+let cachedWeather = null;
+let lastWeatherFetch = 0;
+const WEATHER_CACHE_DURATION = 600000; // 10 minutes
+
+const getWeatherFromIP = async () => {
+  const now = Date.now();
+  if (cachedWeather && (now - lastWeatherFetch) < WEATHER_CACHE_DURATION) {
+    return cachedWeather;
+  }
+
+  try {
+    // Étape 1 : Géolocalisation par IP
+    const geoResponse = await axios.get('http://ip-api.com/json/', { timeout: 5000 });
+    if (geoResponse.data.status !== 'success') return null;
+
+    const { lat, lon } = geoResponse.data;
+
+    // Étape 2 : Récupérer la météo
+    const weatherResponse = await axios.get(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`,
+      { timeout: 5000 }
+    );
+
+    const temp = weatherResponse.data.current_weather?.temperature;
+    if (temp !== undefined) {
+      cachedWeather = parseFloat(temp);
+      lastWeatherFetch = now;
+      console.log('🌤️ Température extérieure:', cachedWeather, '°C');
+      return cachedWeather;
+    }
+  } catch (err) {
+    console.warn('❌ Erreur récupération météo:', err.message);
+  }
+
+  return null;
+};
+
 let isLocalAvailable = false;
 let lastLocalCheck = 0;
 const LOCAL_CHECK_INTERVAL = 10000;
@@ -138,16 +176,19 @@ const getSinricState = async () => {
       }
 
       const sinricMode = device.thermostatMode || 'HEAT';
-      const modeMap = { 'HEAT': 'CONFORT', 'ECO': 'ECO', 'COOL': 'HORS_GEL', 'OFF': 'ARRET' };
+      const modeMap = { 'HEAT': 'CONFORT', 'ECO': 'ECO', 'OFF': 'ARRET' };
       
       console.log('✅ Données SinricPro:', device.temperature, '°C,', sinricMode);
+      
+      // Récupérer la météo en parallèle
+      const tempExt = await getWeatherFromIP();
       
       return {
         tempActuelle: parseFloat(device.temperature) || null,
         humidite: parseFloat(device.humidity) || null,
         tempConfort: parseFloat(device.targetTemperature) || 20,
         tempEco: 17,
-        tempExterieure: null,
+        tempExterieure: tempExt,
         mode: modeMap[sinricMode] || 'CONFORT',
         connectionMode: 'distant',
       };
@@ -206,8 +247,8 @@ export const getThermostatData = async () => {
 
 export const setMode = async (mode) => {
   const config = getConfig();
-  const modeMap = { 'CONFORT': 0, 'ECO': 1, 'HORS_GEL': 2, 'ARRET': 3 };
-  const sinricModeMap = { 'CONFORT': 'HEAT', 'ECO': 'ECO', 'HORS_GEL': 'COOL', 'ARRET': 'OFF' };
+  const modeMap = { 'CONFORT': 0, 'ECO': 1, 'ARRET': 3 };
+  const sinricModeMap = { 'CONFORT': 'HEAT', 'ECO': 'ECO', 'ARRET': 'OFF' };
   setPendingState({ mode });
 
   if (config.thermostatIP && isLocalAvailable) {
