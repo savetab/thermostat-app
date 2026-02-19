@@ -229,7 +229,11 @@ export const setMode = async (mode) => {
     if (token) {
       await axios.post(
         `${PROXY}devices/${config.sinricDeviceId}/action`, 
-        { action: 'setThermostatMode', value: JSON.stringify({ thermostatMode: sinricModeMap[mode] }) }, 
+        { 
+          type: 'request',
+          action: 'setThermostatMode', 
+          value: JSON.stringify({ thermostatMode: sinricModeMap[mode] }) 
+        }, 
         { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15000 }
       );
       console.log('✅ Mode changé via SinricPro');
@@ -263,7 +267,11 @@ export const setConsigneConfort = async (temperature) => {
     if (token) {
       await axios.post(
         `${PROXY}devices/${config.sinricDeviceId}/action`, 
-        { action: 'setTargetTemperature', value: JSON.stringify({ temperature: parseFloat(temperature) }) }, 
+        { 
+          type: 'request',
+          action: 'setTargetTemperature', 
+          value: JSON.stringify({ temperature: parseFloat(temperature) }) 
+        }, 
         { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15000 }
       );
       console.log('✅ Consigne CONFORT changée via SinricPro');
