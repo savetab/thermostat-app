@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 const TemperatureControl = ({ 
@@ -11,28 +11,50 @@ const TemperatureControl = ({
   max = 30,
   step = 0.5 
 }) => {
+  const [localValue, setLocalValue] = useState(value);
   const [isChanging, setIsChanging] = useState(false);
   const [holdInterval, setHoldInterval] = useState(null);
+  const debounceTimer = useRef(null);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
 
   useEffect(() => {
     return () => {
       if (holdInterval) clearInterval(holdInterval);
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, [holdInterval]);
 
-  const handleIncrement = () => {
-    const newValue = Math.min(value + step, max);
-    if (newValue !== value) {
+  // Envoyer la valeur avec debounce (attend 800ms après le dernier changement)
+  const debouncedOnChange = (newValue) => {
+    setLocalValue(newValue);
+    
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    debounceTimer.current = setTimeout(() => {
       onChange(newValue);
+    }, 800);
+  };
+
+  const handleIncrement = () => {
+    const newValue = Math.min(localValue + step, max);
+    if (newValue !== localValue) {
+      setLocalValue(newValue);
+      onChange(newValue); // Bouton = envoi immédiat
       setIsChanging(true);
       setTimeout(() => setIsChanging(false), 300);
     }
   };
 
   const handleDecrement = () => {
-    const newValue = Math.max(value - step, min);
-    if (newValue !== value) {
-      onChange(newValue);
+    const newValue = Math.max(localValue - step, min);
+    if (newValue !== localValue) {
+      setLocalValue(newValue);
+      onChange(newValue); // Bouton = envoi immédiat
       setIsChanging(true);
       setTimeout(() => setIsChanging(false), 300);
     }
@@ -41,16 +63,28 @@ const TemperatureControl = ({
   const startIncrement = () => {
     handleIncrement();
     const interval = setInterval(() => {
-      handleIncrement();
-    }, 200);
+      setLocalValue(prev => {
+        const newValue = Math.min(prev + step, max);
+        if (newValue !== prev) {
+          onChange(newValue);
+        }
+        return newValue;
+      });
+    }, 400); // Ralenti à 400ms pour plus de contrôle
     setHoldInterval(interval);
   };
 
   const startDecrement = () => {
     handleDecrement();
     const interval = setInterval(() => {
-      handleDecrement();
-    }, 200);
+      setLocalValue(prev => {
+        const newValue = Math.max(prev - step, min);
+        if (newValue !== prev) {
+          onChange(newValue);
+        }
+        return newValue;
+      });
+    }, 400); // Ralenti à 400ms
     setHoldInterval(interval);
   };
 
@@ -94,12 +128,12 @@ const TemperatureControl = ({
           style={{ borderColor: buttonColor }}
         >
           <motion.span
-            key={value}
+            key={localValue}
             initial={{ y: -10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="text-3xl font-bold text-gray-800 dark:text-white"
           >
-            {value.toFixed(1)}°C
+            {localValue.toFixed(1)}°C
           </motion.span>
         </motion.div>
 
@@ -123,11 +157,11 @@ const TemperatureControl = ({
           min={min}
           max={max}
           step={step}
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
+          value={localValue}
+          onChange={(e) => debouncedOnChange(parseFloat(e.target.value))}
           className="w-full h-2 rounded-lg appearance-none cursor-pointer"
           style={{
-            background: `linear-gradient(to right, ${buttonColor} 0%, ${buttonColor} ${((value - min) / (max - min)) * 100}%, #e5e7eb ${((value - min) / (max - min)) * 100}%, #e5e7eb 100%)`
+            background: `linear-gradient(to right, ${buttonColor} 0%, ${buttonColor} ${((localValue - min) / (max - min)) * 100}%, #e5e7eb ${((localValue - min) / (max - min)) * 100}%, #e5e7eb 100%)`
           }}
         />
       </div>
@@ -136,14 +170,14 @@ const TemperatureControl = ({
         {label === 'CONFORT' && (
           <>
             {[18, 19, 20, 21, 22].map(temp => (
-              <PresetButton key={temp} value={temp} current={value} onChange={onChange} />
+              <PresetButton key={temp} value={temp} current={localValue} onChange={onChange} />
             ))}
           </>
         )}
         {label === 'ECO' && (
           <>
             {[15, 16, 17, 18].map(temp => (
-              <PresetButton key={temp} value={temp} current={value} onChange={onChange} />
+              <PresetButton key={temp} value={temp} current={localValue} onChange={onChange} />
             ))}
           </>
         )}
@@ -156,7 +190,7 @@ const PresetButton = ({ value, current, onChange }) => (
   <button
     onClick={() => onChange(value)}
     className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-150 ${
-      current === value 
+      Math.abs(current - value) < 0.3
         ? 'bg-blue-500 text-white shadow-md' 
         : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300'
     }`}
