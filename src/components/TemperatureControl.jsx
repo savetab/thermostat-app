@@ -13,7 +13,8 @@ const TemperatureControl = ({
 }) => {
   const [localValue, setLocalValue] = useState(value);
   const [isChanging, setIsChanging] = useState(false);
-  const [holdInterval, setHoldInterval] = useState(null);
+  const holdTimeoutRef = useRef(null);
+  const holdIntervalRef = useRef(null);
   const debounceTimer = useRef(null);
 
   useEffect(() => {
@@ -22,12 +23,13 @@ const TemperatureControl = ({
 
   useEffect(() => {
     return () => {
-      if (holdInterval) clearInterval(holdInterval);
+      if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current);
+      if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [holdInterval]);
+  }, []);
 
-  // Envoyer la valeur avec debounce (attend 800ms après le dernier changement)
+  // Envoyer la valeur avec debounce pour le slider
   const debouncedOnChange = (newValue) => {
     setLocalValue(newValue);
     
@@ -40,7 +42,7 @@ const TemperatureControl = ({
     }, 800);
   };
 
-  const handleIncrement = () => {
+  const handleSingleIncrement = () => {
     const newValue = Math.min(localValue + step, max);
     if (newValue !== localValue) {
       setLocalValue(newValue);
@@ -50,7 +52,7 @@ const TemperatureControl = ({
     }
   };
 
-  const handleDecrement = () => {
+  const handleSingleDecrement = () => {
     const newValue = Math.max(localValue - step, min);
     if (newValue !== localValue) {
       setLocalValue(newValue);
@@ -60,47 +62,52 @@ const TemperatureControl = ({
     }
   };
 
-  const startIncrement = () => {
-    handleIncrement();
-    // Attendre 500ms avant de démarrer l'auto-increment (hold)
-    const holdTimeout = setTimeout(() => {
-      const interval = setInterval(() => {
+  const startIncrementHold = () => {
+    // Premier increment immédiat
+    handleSingleIncrement();
+    
+    // Attendre 600ms avant de démarrer l'auto-increment
+    holdTimeoutRef.current = setTimeout(() => {
+      holdIntervalRef.current = setInterval(() => {
         setLocalValue(prev => {
           const newValue = Math.min(prev + step, max);
           if (newValue !== prev) {
             onChange(newValue);
+            return newValue;
           }
-          return newValue;
+          return prev;
         });
-      }, 300);
-      setHoldInterval(interval);
-    }, 500); // Délai avant que le hold démarre
-    setHoldInterval(holdTimeout);
+      }, 200);
+    }, 600);
   };
 
-  const startDecrement = () => {
-    handleDecrement();
-    // Attendre 500ms avant de démarrer l'auto-decrement (hold)
-    const holdTimeout = setTimeout(() => {
-      const interval = setInterval(() => {
+  const startDecrementHold = () => {
+    // Premier decrement immédiat
+    handleSingleDecrement();
+    
+    // Attendre 600ms avant de démarrer l'auto-decrement
+    holdTimeoutRef.current = setTimeout(() => {
+      holdIntervalRef.current = setInterval(() => {
         setLocalValue(prev => {
           const newValue = Math.max(prev - step, min);
           if (newValue !== prev) {
             onChange(newValue);
+            return newValue;
           }
-          return newValue;
+          return prev;
         });
-      }, 300);
-      setHoldInterval(interval);
-    }, 500); // Délai avant que le hold démarre
-    setHoldInterval(holdTimeout);
+      }, 200);
+    }, 600);
   };
 
   const stopHold = () => {
-    if (holdInterval) {
-      clearTimeout(holdInterval);
-      clearInterval(holdInterval);
-      setHoldInterval(null);
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current);
+      holdTimeoutRef.current = null;
+    }
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
     }
   };
 
@@ -120,10 +127,10 @@ const TemperatureControl = ({
       <div className="flex items-center justify-center gap-2">
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onMouseDown={startDecrement}
+          onMouseDown={startDecrementHold}
           onMouseUp={stopHold}
           onMouseLeave={stopHold}
-          onTouchStart={startDecrement}
+          onTouchStart={startDecrementHold}
           onTouchEnd={stopHold}
           className="w-16 h-16 rounded-xl font-bold text-2xl text-white shadow-lg active:shadow-inner transition-all duration-150 flex items-center justify-center"
           style={{ backgroundColor: buttonColor }}
@@ -148,10 +155,10 @@ const TemperatureControl = ({
 
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onMouseDown={startIncrement}
+          onMouseDown={startIncrementHold}
           onMouseUp={stopHold}
           onMouseLeave={stopHold}
-          onTouchStart={startIncrement}
+          onTouchStart={startIncrementHold}
           onTouchEnd={stopHold}
           className="w-16 h-16 rounded-xl font-bold text-2xl text-white shadow-lg active:shadow-inner transition-all duration-150 flex items-center justify-center"
           style={{ backgroundColor: buttonColor }}
@@ -179,14 +186,14 @@ const TemperatureControl = ({
         {label === 'CONFORT' && (
           <>
             {[18, 19, 20, 21, 22].map(temp => (
-              <PresetButton key={temp} value={temp} current={localValue} onChange={onChange} />
+              <PresetButton key={temp} value={temp} current={localValue} onChange={(val) => { setLocalValue(val); onChange(val); }} />
             ))}
           </>
         )}
         {label === 'ECO' && (
           <>
             {[15, 16, 17, 18].map(temp => (
-              <PresetButton key={temp} value={temp} current={localValue} onChange={onChange} />
+              <PresetButton key={temp} value={temp} current={localValue} onChange={(val) => { setLocalValue(val); onChange(val); }} />
             ))}
           </>
         )}
