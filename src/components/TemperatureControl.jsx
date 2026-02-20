@@ -13,9 +13,8 @@ const TemperatureControl = ({
 }) => {
   const [localValue, setLocalValue] = useState(value);
   const [isChanging, setIsChanging] = useState(false);
-  const holdTimeoutRef = useRef(null);
-  const holdIntervalRef = useRef(null);
   const debounceTimer = useRef(null);
+  const isHoldingRef = useRef(false);
 
   useEffect(() => {
     setLocalValue(value);
@@ -23,8 +22,6 @@ const TemperatureControl = ({
 
   useEffect(() => {
     return () => {
-      if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current);
-      if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, []);
@@ -42,7 +39,10 @@ const TemperatureControl = ({
     }, 800);
   };
 
-  const handleSingleIncrement = () => {
+  // Bouton + simple clic
+  const handleIncrement = () => {
+    if (isHoldingRef.current) return; // Ignore si en mode hold
+    
     const newValue = Math.min(localValue + step, max);
     if (newValue !== localValue) {
       setLocalValue(newValue);
@@ -52,62 +52,16 @@ const TemperatureControl = ({
     }
   };
 
-  const handleSingleDecrement = () => {
+  // Bouton - simple clic
+  const handleDecrement = () => {
+    if (isHoldingRef.current) return; // Ignore si en mode hold
+    
     const newValue = Math.max(localValue - step, min);
     if (newValue !== localValue) {
       setLocalValue(newValue);
       onChange(newValue);
       setIsChanging(true);
       setTimeout(() => setIsChanging(false), 300);
-    }
-  };
-
-  const startIncrementHold = () => {
-    // Premier increment immédiat
-    handleSingleIncrement();
-    
-    // Attendre 600ms avant de démarrer l'auto-increment
-    holdTimeoutRef.current = setTimeout(() => {
-      holdIntervalRef.current = setInterval(() => {
-        setLocalValue(prev => {
-          const newValue = Math.min(prev + step, max);
-          if (newValue !== prev) {
-            onChange(newValue);
-            return newValue;
-          }
-          return prev;
-        });
-      }, 200);
-    }, 600);
-  };
-
-  const startDecrementHold = () => {
-    // Premier decrement immédiat
-    handleSingleDecrement();
-    
-    // Attendre 600ms avant de démarrer l'auto-decrement
-    holdTimeoutRef.current = setTimeout(() => {
-      holdIntervalRef.current = setInterval(() => {
-        setLocalValue(prev => {
-          const newValue = Math.max(prev - step, min);
-          if (newValue !== prev) {
-            onChange(newValue);
-            return newValue;
-          }
-          return prev;
-        });
-      }, 200);
-    }, 600);
-  };
-
-  const stopHold = () => {
-    if (holdTimeoutRef.current) {
-      clearTimeout(holdTimeoutRef.current);
-      holdTimeoutRef.current = null;
-    }
-    if (holdIntervalRef.current) {
-      clearInterval(holdIntervalRef.current);
-      holdIntervalRef.current = null;
     }
   };
 
@@ -127,11 +81,7 @@ const TemperatureControl = ({
       <div className="flex items-center justify-center gap-2">
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onMouseDown={startDecrementHold}
-          onMouseUp={stopHold}
-          onMouseLeave={stopHold}
-          onTouchStart={startDecrementHold}
-          onTouchEnd={stopHold}
+          onClick={handleDecrement}
           className="w-16 h-16 rounded-xl font-bold text-2xl text-white shadow-lg active:shadow-inner transition-all duration-150 flex items-center justify-center"
           style={{ backgroundColor: buttonColor }}
         >
@@ -155,11 +105,7 @@ const TemperatureControl = ({
 
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onMouseDown={startIncrementHold}
-          onMouseUp={stopHold}
-          onMouseLeave={stopHold}
-          onTouchStart={startIncrementHold}
-          onTouchEnd={stopHold}
+          onClick={handleIncrement}
           className="w-16 h-16 rounded-xl font-bold text-2xl text-white shadow-lg active:shadow-inner transition-all duration-150 flex items-center justify-center"
           style={{ backgroundColor: buttonColor }}
         >
