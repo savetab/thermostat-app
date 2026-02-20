@@ -9,7 +9,8 @@ const TemperatureControl = ({
   color,
   min = 5,
   max = 30,
-  step = 0.5 
+  step = 0.5,
+  disabled = false
 }) => {
   const [localValue, setLocalValue] = useState(value);
   const [isChanging, setIsChanging] = useState(false);
@@ -80,9 +81,10 @@ const TemperatureControl = ({
 
       <div className="flex items-center justify-center gap-2">
         <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={handleDecrement}
-          className="w-16 h-16 rounded-xl font-bold text-2xl text-white shadow-lg active:shadow-inner transition-all duration-150 flex items-center justify-center"
+          whileTap={{ scale: disabled ? 1 : 0.95 }}
+          onClick={disabled ? undefined : handleDecrement}
+          disabled={disabled}
+          className={`w-16 h-16 rounded-xl font-bold text-2xl text-white shadow-lg active:shadow-inner transition-all duration-150 flex items-center justify-center ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
           style={{ backgroundColor: buttonColor }}
         >
           −
@@ -104,9 +106,10 @@ const TemperatureControl = ({
         </motion.div>
 
         <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={handleIncrement}
-          className="w-16 h-16 rounded-xl font-bold text-2xl text-white shadow-lg active:shadow-inner transition-all duration-150 flex items-center justify-center"
+          whileTap={{ scale: disabled ? 1 : 0.95 }}
+          onClick={disabled ? undefined : handleIncrement}
+          disabled={disabled}
+          className={`w-16 h-16 rounded-xl font-bold text-2xl text-white shadow-lg active:shadow-inner transition-all duration-150 flex items-center justify-center ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
           style={{ backgroundColor: buttonColor }}
         >
           +
@@ -120,8 +123,9 @@ const TemperatureControl = ({
           max={max}
           step={step}
           value={localValue}
-          onChange={(e) => debouncedOnChange(parseFloat(e.target.value))}
-          className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+          onChange={disabled ? undefined : (e) => debouncedOnChange(parseFloat(e.target.value))}
+          disabled={disabled}
+          className={`w-full h-2 rounded-lg appearance-none ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
           style={{
             background: `linear-gradient(to right, ${buttonColor} 0%, ${buttonColor} ${((localValue - min) / (max - min)) * 100}%, #e5e7eb ${((localValue - min) / (max - min)) * 100}%, #e5e7eb 100%)`
           }}
@@ -132,14 +136,18 @@ const TemperatureControl = ({
         {label === 'CONFORT' && (
           <>
             {[18, 19, 20, 21, 22].map(temp => (
-              <PresetButton key={temp} value={temp} current={localValue} onChange={(val) => { setLocalValue(val); onChange(val); }} />
-            ))}
-          </>
-        )}
-        {label === 'ECO' && (
-          <>
-            {[15, 16, 17, 18].map(temp => (
-              <PresetButton key={temp} value={temp} current={localValue} onChange={(val) => { setLocalValue(val); onChange(val); }} />
+              <button
+                key={temp}
+                onClick={disabled ? undefined : () => { setLocalValue(temp); onChange(temp); }}
+                disabled={disabled}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  Math.abs(localValue - temp) < 0.3
+                    ? 'bg-blue-500 text-white shadow-md' 
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300'
+                } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              >
+                {temp}°C
+              </button>
             ))}
           </>
         )}
@@ -147,18 +155,5 @@ const TemperatureControl = ({
     </div>
   );
 };
-
-const PresetButton = ({ value, current, onChange }) => (
-  <button
-    onClick={() => onChange(value)}
-    className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-150 ${
-      Math.abs(current - value) < 0.3
-        ? 'bg-blue-500 text-white shadow-md' 
-        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300'
-    }`}
-  >
-    {value}°C
-  </button>
-);
 
 export default TemperatureControl;

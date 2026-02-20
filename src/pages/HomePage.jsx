@@ -92,6 +92,7 @@ const HomePage = () => {
 
   const tempExt = data?.tempExterieure;
   const hasExt = tempExt !== null && tempExt !== undefined && tempExt > -50;
+  const isConfortMode = data?.mode === 'CONFORT';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 pb-20">
@@ -153,7 +154,7 @@ const HomePage = () => {
           </motion.div>
         </div>
 
-        {/* Modes - HORS-GEL RETIRÉ */}
+        {/* Modes */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl mb-6">
           <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4">MODE</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -164,7 +165,7 @@ const HomePage = () => {
         </div>
 
         {/* Consignes */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
+        <div className={`bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl ${!isConfortMode ? 'opacity-60' : ''}`}>
           <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-6">CONSIGNE</h2>
           <TemperatureControl
             label="CONFORT"
@@ -174,7 +175,15 @@ const HomePage = () => {
             color="confort"
             min={10}
             max={30}
+            disabled={!isConfortMode}
           />
+          {!isConfortMode && (
+            <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
+                ℹ️ Passez en mode CONFORT pour modifier la consigne
+              </p>
+            </div>
+          )}
         </div>
 
         {error && (
