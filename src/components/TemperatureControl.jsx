@@ -44,7 +44,7 @@ const TemperatureControl = ({
     const newValue = Math.min(localValue + step, max);
     if (newValue !== localValue) {
       setLocalValue(newValue);
-      onChange(newValue); // Bouton = envoi immédiat
+      onChange(newValue);
       setIsChanging(true);
       setTimeout(() => setIsChanging(false), 300);
     }
@@ -54,7 +54,7 @@ const TemperatureControl = ({
     const newValue = Math.max(localValue - step, min);
     if (newValue !== localValue) {
       setLocalValue(newValue);
-      onChange(newValue); // Bouton = envoi immédiat
+      onChange(newValue);
       setIsChanging(true);
       setTimeout(() => setIsChanging(false), 300);
     }
@@ -62,34 +62,43 @@ const TemperatureControl = ({
 
   const startIncrement = () => {
     handleIncrement();
-    const interval = setInterval(() => {
-      setLocalValue(prev => {
-        const newValue = Math.min(prev + step, max);
-        if (newValue !== prev) {
-          onChange(newValue);
-        }
-        return newValue;
-      });
-    }, 400); // Ralenti à 400ms pour plus de contrôle
-    setHoldInterval(interval);
+    // Attendre 500ms avant de démarrer l'auto-increment (hold)
+    const holdTimeout = setTimeout(() => {
+      const interval = setInterval(() => {
+        setLocalValue(prev => {
+          const newValue = Math.min(prev + step, max);
+          if (newValue !== prev) {
+            onChange(newValue);
+          }
+          return newValue;
+        });
+      }, 300);
+      setHoldInterval(interval);
+    }, 500); // Délai avant que le hold démarre
+    setHoldInterval(holdTimeout);
   };
 
   const startDecrement = () => {
     handleDecrement();
-    const interval = setInterval(() => {
-      setLocalValue(prev => {
-        const newValue = Math.max(prev - step, min);
-        if (newValue !== prev) {
-          onChange(newValue);
-        }
-        return newValue;
-      });
-    }, 400); // Ralenti à 400ms
-    setHoldInterval(interval);
+    // Attendre 500ms avant de démarrer l'auto-decrement (hold)
+    const holdTimeout = setTimeout(() => {
+      const interval = setInterval(() => {
+        setLocalValue(prev => {
+          const newValue = Math.max(prev - step, min);
+          if (newValue !== prev) {
+            onChange(newValue);
+          }
+          return newValue;
+        });
+      }, 300);
+      setHoldInterval(interval);
+    }, 500); // Délai avant que le hold démarre
+    setHoldInterval(holdTimeout);
   };
 
   const stopHold = () => {
     if (holdInterval) {
+      clearTimeout(holdInterval);
       clearInterval(holdInterval);
       setHoldInterval(null);
     }
