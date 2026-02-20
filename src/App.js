@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import HomePage from './pages/HomePage';
-import RadiateursPage from './pages/RadiateursPage';
 import ConfigPage from './pages/ConfigPage';
 import './App.css';
 
@@ -11,8 +10,6 @@ function App() {
     switch (currentPage) {
       case 'home':
         return <HomePage />;
-      case 'radiateurs':
-        return <RadiateursPage />;
       case 'config':
         return <ConfigPage />;
       default:
@@ -38,18 +35,6 @@ function App() {
             >
               <span className="text-2xl mb-1">🏠</span>
               <span className="text-xs font-medium">Accueil</span>
-            </button>
-            
-            <button
-              onClick={() => setCurrentPage('radiateurs')}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                currentPage === 'radiateurs' 
-                  ? 'text-blue-500' 
-                  : 'text-gray-500 dark:text-gray-400'
-              }`}
-            >
-              <span className="text-2xl mb-1">📍</span>
-              <span className="text-xs font-medium">Radiateurs</span>
             </button>
             
             <button
