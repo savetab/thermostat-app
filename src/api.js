@@ -51,23 +51,40 @@ export const getShareURL = () => {
   return `${baseURL}?${params.toString()}`;
 };
 
-// ========== MÉTÉO VIA GÉOLOCALISATION IP ==========
+// ========== MÉTÉO VIA GÉOLOCALISATION GPS ==========
 let cachedWeather = null;
 let lastWeatherFetch = 0;
 const WEATHER_CACHE_DURATION = 600000; // 10 minutes
 
-const getWeatherFromIP = async () => {
+const getWeatherFromGPS = async () => {
   const now = Date.now();
   if (cachedWeather && (now - lastWeatherFetch) < WEATHER_CACHE_DURATION) {
     return cachedWeather;
   }
 
   try {
-    // Étape 1 : Géolocalisation par IP (HTTPS)
-    const geoResponse = await axios.get('https://ipapi.co/json/', { timeout: 5000 });
-    if (!geoResponse.data.latitude) return null;
+    // Étape 1 : Demander la position GPS du navigateur
+    const position = await new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Géolocalisation non supportée'));
+        return;
+      }
+      
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        (err) => reject(err),
+        { 
+          enableHighAccuracy: false, // false = plus rapide, suffisant pour météo
+          timeout: 10000,
+          maximumAge: 600000 // Cache 10 min
+        }
+      );
+    });
 
-    const { latitude: lat, longitude: lon } = geoResponse.data;
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    
+    console.log('📍 Position GPS:', lat.toFixed(4), lon.toFixed(4));
 
     // Étape 2 : Récupérer la météo
     const weatherResponse = await axios.get(
@@ -83,7 +100,31 @@ const getWeatherFromIP = async () => {
       return cachedWeather;
     }
   } catch (err) {
-    console.warn('❌ Erreur récupération météo:', err.message);
+    console.warn('❌ Erreur géolocalisation GPS, fallback IP:', err.message);
+    
+    // Fallback : géolocalisation IP si GPS échoue
+    try {
+      const geoResponse = await axios.get('https://ipapi.co/json/', { timeout: 5000 });
+      if (!geoResponse.data.latitude) return null;
+
+      const { latitude: lat, longitude: lon } = geoResponse.data;
+      console.log('📍 Position IP (fallback):', geoResponse.data.city);
+
+      const weatherResponse = await axios.get(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`,
+        { timeout: 5000 }
+      );
+
+      const temp = weatherResponse.data.current_weather?.temperature;
+      if (temp !== undefined) {
+        cachedWeather = parseFloat(temp);
+        lastWeatherFetch = now;
+        console.log('🌤️ Température extérieure (IP):', cachedWeather, '°C');
+        return cachedWeather;
+      }
+    } catch (fallbackErr) {
+      console.warn('❌ Fallback IP échoué:', fallbackErr.message);
+    }
   }
 
   return null;
@@ -181,7 +222,7 @@ const getSinricState = async () => {
       console.log('✅ Données SinricPro:', device.temperature, '°C,', sinricMode);
       
       // Récupérer la météo en parallèle
-      const tempExt = await getWeatherFromIP();
+      const tempExt = await getWeatherFromGPS();
       
       return {
         tempActuelle: parseFloat(device.temperature) || null,
